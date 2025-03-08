@@ -34,6 +34,7 @@ const userSchema = new mongoose.Schema({
   role: {
     type: String
   },
+
 },{ timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } }
 );
 

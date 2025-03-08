@@ -2,6 +2,7 @@ require("dotenv").config({ debug: process.env.DEBUG });
 const jwt = require("jsonwebtoken");
 const User = require("../models/user.js");
 const CashFlow = require("../models/userTransaction.js");
+const userAmount = require("../models/userAmount.js");
 
 exports.registration = (req, res) => {
   const fname = req.param("fname");
@@ -82,37 +83,18 @@ exports.login = (req, res) => {
 };
 
 exports.allEmployeeData = async (req, res) => {
-  let data;
-
   try {
     const users = await User.find({});
-    const results = [];
-    for (const user of users) {
-      const latestTransaction = await CashFlow.find({ userId: user._id })
-        .sort({ createdAt: -1 })
-
-      // Combine the user and their latest transaction into a single object
-      const result = {
-        user: user,
-        latestTransaction: latestTransaction,
-      };
-
-      // Push the combined object into the results array
-      results.push(result);
-    }
+    const results = await Promise.all(users.map(async (user) => {
+      const latestTransaction = await CashFlow.findOne({ userId: user._id }).sort({ createdAt: -1 });
+      const amount = await userAmount.findOne({ userId: user._id }); // Assuming you want to include user amount details
+      return { user, latestTransaction, userAmount: amount };
+    }));
     res.status(200).json(results);
   } catch (error) {
-    console.log('error', error)
-    res.send("error");
+    console.log(error);
+    res.status(500).json({ msg: "Error retrieving employee data" });
   }
-  // User.find((err, users) => {
-  //   if (err) {
-  //     res.send("error");
-  //   }
-
-  // });
-  // setTimeout(() => {
-  // }, 50);
 };
 
 // Save data of edited user in the database
@@ -142,13 +124,26 @@ exports.deleteUser = async (req, resp) => {
   }
 };
 
-exports.addcashflow = async (req, res) => {
+exports.  addcashflow = async (req, res) => {
   console.log("object");
   const { userId, ...rest } = req.body;
   try {
     const data = await CashFlow.create(req.body);
-    res.status(200).json({ msg: "Employee deleted Successfully", data });
+    res.status(200).json({ msg: "cash update Successfully", data });
   } catch (error) {
     res.status(409).json({ msg: error.message });
   }
 };
+exports.  addUserCashflow = async (req, res) => {
+  console.log("object");
+  const { userId, ...rest } = req.body;
+  try {
+    const data = await userAmount.create(req.body);
+    res.status(200).json({ msg: "User cash update Successfully", data });
+  } catch (error) {
+    res.status(409).json({ msg: error.message });
+  }
+};
+
+
+
