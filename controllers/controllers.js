@@ -86,7 +86,7 @@ exports.allEmployeeData = async (req, res) => {
   try {
     const users = await User.find({});
     const results = await Promise.all(users.map(async (user) => {
-      const latestTransaction = await CashFlow.findOne({ userId: user._id }).sort({ createdAt: -1 });
+      const latestTransaction = await CashFlow.find({ userId: user._id }).sort({ createdAt: -1 });
       const amount = await userAmount.findOne({ userId: user._id }); // Assuming you want to include user amount details
       return { user, latestTransaction, userAmount: amount };
     }));
