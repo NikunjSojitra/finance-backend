@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/user.js");
 const CashFlow = require("../models/userTransaction.js");
 const userAmount = require("../models/userAmount.js");
+const mongoose = require('mongoose');
 
 exports.registration = (req, res) => {
   const fname = req.param("fname");
@@ -115,12 +116,24 @@ exports.updateEmpData = async (request, response) => {
 };
 
 exports.deleteUser = async (req, resp) => {
-  console.log("ashish", req.params._id);
+  console.log("Deleting user with ID:", req.params.id); 
+
   try {
-    await User.deleteOne({ _id: request.params._id });
-    resp.status(200).json({ msg: "Employee deleted Successfully" });
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return resp.status(400).json({ msg: "Invalid user ID format." });
+    }
+
+    const result = await User.deleteOne({ _id: req.params.id }); 
+    console.log('Delete result:', result); 
+
+    if (result.deletedCount > 0) {
+      resp.status(200).json({ msg: "Employee deleted successfully" });
+    } else {
+      resp.status(404).json({ msg: "Employee not found" }); 
+    }
   } catch (error) {
-    resp.status(409).json({ msg: error.message });
+    console.error('Error deleting user:', error); 
+    resp.status(500).json({ msg: error.message });
   }
 };
 

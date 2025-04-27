@@ -1,4 +1,4 @@
-  const mongoose = require("mongoose");
+const mongoose = require("mongoose");
 
 const cashFlowSchema = new mongoose.Schema({
   userId: {
@@ -25,6 +25,7 @@ const cashFlowSchema = new mongoose.Schema({
     trim: true,
     default:0
   },
+ 
 },{ timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } }
 );
 
