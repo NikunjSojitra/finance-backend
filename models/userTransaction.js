@@ -25,6 +25,10 @@ const cashFlowSchema = new mongoose.Schema({
     trim: true,
     default:0
   },
+  date: {
+    type: Date,
+    default: Date.now 
+  }
  
 },{ timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } }
 );

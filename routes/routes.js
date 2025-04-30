@@ -7,7 +7,8 @@ let {
   deleteUser,
   updateEmpData,
   addcashflow,
-  addUserCashflow
+  addUserCashflow,
+  deleteTransaction
 } = require("../controllers/controllers.js");
 
 let router = express.Router();
@@ -19,5 +20,6 @@ router.delete("/deleteEmployee/:id", deleteUser);
 router.patch("/updateEmpData/:id", updateEmpData);
 router.post("/updateEmpData/cash", addcashflow);
 router.post("/updateEmpData/usercash", addUserCashflow);
+router.delete("/deletetransaction/:id", deleteTransaction);
 
 module.exports = router;

@@ -139,7 +139,7 @@ exports.deleteUser = async (req, resp) => {
 
 exports.  addcashflow = async (req, res) => {
   console.log("object");
-  const { userId, ...rest } = req.body;
+  const { userId,date, ...rest } = req.body;
   try {
     const data = await CashFlow.create(req.body);
     res.status(200).json({ msg: "cash update Successfully", data });
@@ -147,6 +147,31 @@ exports.  addcashflow = async (req, res) => {
     res.status(409).json({ msg: error.message });
   }
 };
+
+exports.deleteTransaction = async (req, resp) => {
+  console.log("Deleting transaction with ID:", req.params.id);
+
+  try {
+    // Validate the transaction ID
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return resp.status(400).json({ msg: "Invalid transaction ID format." });
+    }
+
+    // Attempt to delete the transaction
+    const result = await CashFlow.deleteOne({ _id: req.params.id });
+    console.log('Delete result:', result);
+
+    if (result.deletedCount > 0) {
+      return resp.status(200).json({ msg: "Transaction deleted successfully" });
+    } else {
+      return resp.status(404).json({ msg: "Transaction not found" });
+    }
+  } catch (error) {
+    console.error('Error deleting transaction:', error);
+    return resp.status(500).json({ msg: "Internal server error. Please try again later." });
+  }
+};
+
 exports.  addUserCashflow = async (req, res) => {
   console.log("object");
   const { userId, ...rest } = req.body;
