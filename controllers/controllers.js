@@ -13,6 +13,7 @@ exports.registration = (req, res) => {
   const password = req.param("password");
   const house = req.param("house");
   const role = req.param("role");
+  const adminId = req.param("adminId");
 
   if (!(fname && lname && password && mobile && email && role)) {
     res.json({ msg: "All fields are required" });
@@ -33,6 +34,8 @@ exports.registration = (req, res) => {
           password,
           house,
           role,
+          adminId,
+          // createdBy: req.user ? req.user._id : null, 
         },
         (err, data) => {
           if (err) {
@@ -83,12 +86,30 @@ exports.login = (req, res) => {
   });
 };
 
+exports.adminId = (req, res) => {
+  User.find({}, 'adminId email', (err, users) => { 
+    if (err) {
+      return res.status(500).json({ msg: "Error: Something happened" }); 
+    }
+
+    if (!users || users.length === 0) {
+      return res.status(404).json({ msg: "No users found" });
+    }
+    const result = users.map(user => ({
+      adminId: user.adminId,
+      email: user.email
+    }));
+
+    return res.status(200).json({ result });
+  });
+};
+
 exports.allEmployeeData = async (req, res) => {
   try {
     const users = await User.find({});
     const results = await Promise.all(users.map(async (user) => {
       const latestTransaction = await CashFlow.find({ userId: user._id }).sort({ createdAt: -1 });
-      const amount = await userAmount.findOne({ userId: user._id }); // Assuming you want to include user amount details
+      const amount = await userAmount.findOne({ userId: user._id }); 
       return { user, latestTransaction, userAmount: amount };
     }));
     res.status(200).json(results);
@@ -152,12 +173,10 @@ exports.deleteTransaction = async (req, resp) => {
   console.log("Deleting transaction with ID:", req.params.id);
 
   try {
-    // Validate the transaction ID
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return resp.status(400).json({ msg: "Invalid transaction ID format." });
     }
 
-    // Attempt to delete the transaction
     const result = await CashFlow.deleteOne({ _id: req.params.id });
     console.log('Delete result:', result);
 

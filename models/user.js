@@ -34,6 +34,10 @@ const userSchema = new mongoose.Schema({
   role: {
     type: String
   },
+  adminId: {
+    type: String,
+  },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 
 },{ timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } }
 );
