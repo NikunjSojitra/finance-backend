@@ -21,7 +21,7 @@ router.post("/login", login);
 router.get("/allEmployeeData", allEmployeeData);
 router.get("/adminid", adminId);
 router.delete("/deleteEmployee/:id", deleteUser);
-router.patch("/updateEmpData/:id", updateEmpData);
+router.patch("/updateEmpData/:_id", updateEmpData);
 router.post("/updateEmpData/cash", addcashflow);
 router.post("/updateEmpData/usercash", addUserCashflow);
 router.delete("/deletetransaction/:id", deleteTransaction);
