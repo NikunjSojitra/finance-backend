@@ -1,8 +1,8 @@
 require("dotenv").config({ debug: process.env.DEBUG });
 const jwt = require("jsonwebtoken");
-const User = require("../models/user.js");
-const CashFlow = require("../models/userTransaction.js");
-const userAmount = require("../models/userAmount.js");
+const User = require("../../models/user.js");
+const CashFlow = require("../../models/userTransaction.js");
+const userAmount = require("../../models/userAmount.js");
 const mongoose = require("mongoose");
 
 exports.registration = (req, res) => {

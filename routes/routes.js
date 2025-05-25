@@ -11,7 +11,7 @@ let {
   deleteTransaction,
   adminId
   
-} = require("../controllers/controllers.js");
+} = require("../api/controllers/controllers");
 const { verifyAdmin } = require("../middlewares/auth");
 
 let router = express.Router();
