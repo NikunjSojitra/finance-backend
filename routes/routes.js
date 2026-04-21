@@ -9,10 +9,12 @@ let {
   addcashflow,
   addUserCashflow,
   deleteTransaction,
-  adminId
-  
-} = require("../api/controllers/controllers");
-const { verifyAdmin } = require("../middlewares/auth");
+  adminId,
+  getUsers,
+  updateUserRole,
+  createUserByFinancer
+} = require("../controllers/controllers.js");
+const { verifyToken, verifySuperAdmin, verifyFinancier } = require("../middlewares/auth.js");
 
 let router = express.Router();
 
@@ -25,5 +27,10 @@ router.patch("/updateEmpData/:_id", updateEmpData);
 router.post("/updateEmpData/cash", addcashflow);
 router.post("/updateEmpData/usercash", addUserCashflow);
 router.delete("/deletetransaction/:id", deleteTransaction);
+
+// New Role-based Routes
+router.get("/users", verifyToken, getUsers);
+router.put("/users/:id/role", verifySuperAdmin, updateUserRole);
+router.post("/users", verifyFinancier, createUserByFinancer);
 
 module.exports = router;

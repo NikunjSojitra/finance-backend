@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
 const userSchema = new mongoose.Schema({
   fname: {
@@ -6,11 +7,10 @@ const userSchema = new mongoose.Schema({
     trim: true,
     required: "First Name is required",
   },
-  lname:{
-    type:String,
-    trim:true,
-    required:"Last Name is required",
-    unique:true 
+  lname: {
+    type: String,
+    trim: true,
+    required: "Last Name is required",
   },
   email: {
     type: String,
@@ -29,17 +29,28 @@ const userSchema = new mongoose.Schema({
   },
   house: {
     type: String,
-    required: "house number is required",
   },
   role: {
-    type: String
-  },
-  adminId: {
     type: String,
+    enum: ['superadmin', 'financer', 'user'],
+    default: 'user'
   },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-
-},{ timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } }
+  createdBy: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "User",
+    default: null 
+  },
+}, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } }
 );
+
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
+
+userSchema.methods.comparePassword = async function(candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
 
 module.exports = mongoose.model("User", userSchema);

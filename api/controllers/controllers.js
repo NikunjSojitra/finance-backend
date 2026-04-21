@@ -15,9 +15,10 @@ exports.registration = (req, res) => {
   const role = req.param("role");
   const adminId = req.param("adminId");
 
-  if (!(fname && lname && password && mobile && email && role)) {
+  if (!(fname && lname && password && mobile && email)) {
     res.json({ msg: "All fields are required" });
   }
+  const assignedRole = "user";
 
   User.countDocuments({ email: email, password: password }, (err, c) => {
     if (c >= 1) {
@@ -33,7 +34,7 @@ exports.registration = (req, res) => {
           mobile,
           password,
           house,
-          role,
+          role: assignedRole,
           adminId,
           // createdBy: req.user ? req.user._id : null,
         },
@@ -67,6 +68,10 @@ exports.login = (req, res) => {
     if (data[0].password != password) {
       return res.status(200).send("Username or password incorrect");
     } else {
+      if (data[0].role === 'user') {
+        return res.status(403).json({ msg: "Access denied" });
+      }
+      
       const token = jwt.sign({ _id: data[0]._id }, process.env.SECRET_KEY);
       res.cookie("token", token, { expire: new Date() + 333 });
 
@@ -125,87 +130,51 @@ exports.allEmployeeData = async (req, res) => {
 
 // Save data of edited user in the database
 
-// exports.updateEmpData = async (req, res) => {
-//   const userId = req.params._id;
-//   const updateData = { ...req.body }; // clone request body to modify safely
+// exports.updateEmpData = async (request, response) => {
+//   let user = await User.find({ email: request.params.email });
+//   console.log("user", user);
+//   console.log("request", request.body);
+//   user = request.body;
 
-//   // Remove userId from the update object to prevent overwriting
-//   delete updateData.userId;
-
+//   // const empEditData = new User(user);
 //   try {
-//     console.log("Updating user with ID:", userId);
-//     console.log("Update data (cleaned):", updateData);
-
-//     const updatedUser = await User.findByIdAndUpdate(
-//       userId,
-//       updateData,
-//       {
-//         new: true,
-//         runValidators: true
-//       }
-//     );
-
-//     if (!updatedUser) {
-//       return res.status(404).json({ msg: "User not found." });
-//     }
-
-//     return res.status(200).json({
-//       msg: "User updated successfully.",
-//       user: updatedUser
-//     });
+//     await User.updateOne({ _id: request.params._id }, user);
+//     response.status(200).json({ msg: "Update Data Successfully" });
 //   } catch (error) {
-//     console.error("Error updating user:", error);
-//     return res.status(500).json({ msg: error.message || "Internal Server Error" });
+//     response.status(409).json({ msg: error.msg });
 //   }
 // };
 
 exports.updateEmpData = async (req, res) => {
+  const { fname, lname, email, mobile, credit, debit, interest, totalAmount } = req.body;
   const userId = req.params._id;
-  const updateData = { ...req.body };
 
-  // Extract userAmount-related fields and remove userId from main update
-  const {
-    credit,
-    debit,
-    interest,
-    totalAmount,
-    userId: relatedUserId,
-  } = updateData;
-  delete updateData.userId;
-
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
-    // Step 1: Update User document
-    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
-      // new: true,
-      runValidators: true,
-    });
-
-    if (!updatedUser) {
-      return res.status(404).json({ msg: "User not found." });
-    }
-
-    const updatedUserAmount = await userAmount.findOneAndUpdate(
-      { userId: relatedUserId },
-      { credit, debit, interest, totalAmount, userId: relatedUserId },
-      { new: true, runValidators: true, upsert: true }
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { fname, lname, email, mobile },
+      { new: true, runValidators: true, session }
     );
 
-    // if (!updatedUserAmount) {
-    //   return res.status(404).json({ msg: "UserAmount not found for userId: " + relatedUserId });
-    // }
+    const updatedFlow = await userAmount.create(
+      [{ credit, debit, interest, totalAmount, userId }],
+      { session }
+    );
 
-    return res.status(200).json({
-      msg: "User and UserAmount updated successfully.",
-      user: updatedUser,
-      userAmount: updatedUserAmount,
-    });
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(200).json({ msg: "Update Data Successfully" });
   } catch (error) {
-    console.error("Update error:", error);
-    return res
-      .status(500)
-      .json({ msg: error.message || "Internal Server Error" });
+    await session.abortTransaction();
+    session.endSession();
+    res.status(500).json({ msg: "Update failed", error });
   }
 };
+
+
 
 exports.deleteUser = async (req, resp) => {
   console.log("Deleting user with ID:", req.params.id);
@@ -275,9 +244,65 @@ exports.addUserCashflow = async (req, res) => {
   }
 };
 
+exports.getUsers = async (req, res) => {
+  try {
+    let query = {};
+    if (req.user.role === 'financer') {
+      query.createdBy = req.user._id;
+    }
+    const users = await User.find(query).select('-password');
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ msg: "Error fetching users", error: error.message });
+  }
+};
 
-// exports.pendingUser = async (res, req) =>{
-//   const userId =  req.params._id;
+exports.updateUserRole = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { role } = req.body;
+    
+    if (!['superadmin', 'financer', 'user'].includes(role)) {
+      return res.status(400).json({ msg: "Invalid role" });
+    }
 
-//   const todayDate = new Date();
-// }
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { role },
+      { new: true }
+    ).select('-password');
+    
+    if (!updatedUser) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+    res.status(200).json({ msg: "User role updated successfully", user: updatedUser });
+  } catch (error) {
+    res.status(500).json({ msg: "Error updating role", error: error.message });
+  }
+};
+
+exports.createUserByFinancer = async (req, res) => {
+  try {
+    const { fname, lname, email, mobile, password, house } = req.body;
+    
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ msg: "User already exists" });
+    }
+    
+    const newUser = await User.create({
+      fname,
+      lname,
+      email,
+      mobile,
+      password,
+      house,
+      role: 'user',
+      createdBy: req.user._id
+    });
+    
+    res.status(201).json({ msg: "User created successfully", user: { _id: newUser._id, email: newUser.email, role: newUser.role } });
+  } catch (error) {
+    res.status(500).json({ msg: "Error creating user", error: error.message });
+  }
+};
