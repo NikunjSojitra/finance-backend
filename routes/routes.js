@@ -13,7 +13,7 @@ let {
   getUsers,
   updateUserRole,
   createUserByFinancer
-} = require("../controllers/controllers.js");
+} = require("../api/controllers/controllers.js");
 const { verifyToken, verifySuperAdmin, verifyFinancier } = require("../middlewares/auth.js");
 
 let router = express.Router();
