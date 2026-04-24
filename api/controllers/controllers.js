@@ -5,90 +5,87 @@ const CashFlow = require("../../models/userTransaction.js");
 const userAmount = require("../../models/userAmount.js");
 const mongoose = require("mongoose");
 
-exports.registration = (req, res) => {
-  const fname = req.param("fname");
-  const lname = req.param("lname");
-  const email = req.param("email");
-  const mobile = req.param("mobile");
-  const password = req.param("password");
-  const house = req.param("house");
-  const role = req.param("role");
-  const adminId = req.param("adminId");
+exports.registration = async (req, res) => {
+  try {
+    const { fname, lname, email, mobile, password, house, role, adminId } = req.body;
 
-  if (!(fname && lname && password && mobile && email)) {
-    res.json({ msg: "All fields are required" });
-  }
-  const assignedRole = "user";
-
-  User.countDocuments({ email: email, password: password }, (err, c) => {
-    if (c >= 1) {
-      return res
-        .status(200)
-        .json({ msg: "Username or email address already exits" });
-    } else {
-      User.create(
-        {
-          fname,
-          lname,
-          email,
-          mobile,
-          password,
-          house,
-          role: assignedRole,
-          adminId,
-          // createdBy: req.user ? req.user._id : null,
-        },
-        (err, data) => {
-          if (err) {
-            console.log(err);
-            return res.json({ msg: false });
-          } else {
-            return res.json({ data, msg: true });
-          }
-        }
-      );
+    if (!fname || !lname || !password || !mobile || !email) {
+      return res.json({ msg: "All fields are required" });
     }
-  });
+
+    const assignedRole = role || "user";
+
+    // Check if user with this email already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.json({ msg: "Email address already exists" });
+    }
+
+    const newUser = await User.create({
+      fname,
+      lname,
+      email: email.toLowerCase(),
+      mobile,
+      password, // Password will be hashed by the pre-save hook in the User model
+      house,
+      role: assignedRole,
+      adminId,
+    });
+
+    return res.json({ data: newUser, msg: true });
+  } catch (err) {
+    console.error("Registration error:", err);
+    return res.json({ msg: err.message || "Registration failed" });
+  }
 };
 
-exports.login = (req, res) => {
-  const email = req.param("email");
-  const password = req.param("password");
+exports.login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-  User.find({ email: email }, (err, user) => {
-    if (err) {
-      return res.status(200).json({ msg: "Error: Something happened" });
+    if (!email || !password) {
+      return res.status(200).json({ msg: "Email and password are required" });
     }
-    let data = JSON.parse(JSON.stringify(user));
-    try {
-      console.log(data[0].password);
-    } catch (e) {
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
       return res.status(200).json({ msg: "User Doesn't Exits" });
     }
-    if (data[0].password != password) {
-      return res.status(200).send("Username or password incorrect");
-    } else {
-      if (data[0].role === 'user') {
-        return res.status(403).json({ msg: "Access denied" });
-      }
-      
-      const token = jwt.sign({ _id: data[0]._id }, process.env.SECRET_KEY);
-      res.cookie("token", token, { expire: new Date() + 333 });
 
-      return res.status(200).json({
-        token,
-        user: {
-          _id: data[0]._id,
-          fname: data[0].fname,
-          lname: data[0].lname,
-          email: data[0].email,
-          mobile: data[0].mobile,
-          house: data[0].house,
-          role: data[0].role,
-        },
-      });
+    // Check if the plain text password matches the hashed password
+    const isMatch = await user.comparePassword(password);
+    
+    // Fallback: If for some reason the db has a plain text password (from older records)
+    const isPlainTextMatch = user.password === password;
+
+    if (!isMatch && !isPlainTextMatch) {
+      return res.status(200).json({ msg: "Username or password incorrect" }); // Send JSON instead of plain string to match frontend expectations
     }
-  });
+
+    if (user.role === 'user') {
+      return res.status(403).json({ msg: "Access denied" });
+    }
+
+    const token = jwt.sign({ _id: user._id }, process.env.SECRET_KEY);
+    res.cookie("token", token, { expire: new Date() + 333 });
+
+    return res.status(200).json({
+      token,
+      user: {
+        _id: user._id,
+        fname: user.fname,
+        lname: user.lname,
+        email: user.email,
+        mobile: user.mobile,
+        house: user.house,
+        role: user.role,
+      },
+      msg: true // Ensure msg: true is sent on success for frontend compatibility if needed
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    return res.status(500).json({ msg: "Error: Something happened" });
+  }
 };
 
 exports.adminId = (req, res) => {
@@ -117,7 +114,7 @@ exports.allEmployeeData = async (req, res) => {
         const latestTransaction = await CashFlow.find({
           userId: user._id,
         }).sort({ createdAt: -1 });
-        const amount = await userAmount.findOne({ userId: user._id });
+        const amount = await userAmount.findOne({ userId: user._id }).sort({ createdAt: -1 });
         return { user, latestTransaction, userAmount: amount };
       })
     );
@@ -127,23 +124,6 @@ exports.allEmployeeData = async (req, res) => {
     res.status(500).json({ msg: "Error retrieving employee data" });
   }
 };
-
-// Save data of edited user in the database
-
-// exports.updateEmpData = async (request, response) => {
-//   let user = await User.find({ email: request.params.email });
-//   console.log("user", user);
-//   console.log("request", request.body);
-//   user = request.body;
-
-//   // const empEditData = new User(user);
-//   try {
-//     await User.updateOne({ _id: request.params._id }, user);
-//     response.status(200).json({ msg: "Update Data Successfully" });
-//   } catch (error) {
-//     response.status(409).json({ msg: error.msg });
-//   }
-// };
 
 exports.updateEmpData = async (req, res) => {
   const { fname, lname, email, mobile, credit, debit, interest, totalAmount } = req.body;
@@ -158,9 +138,10 @@ exports.updateEmpData = async (req, res) => {
       { new: true, runValidators: true, session }
     );
 
-    const updatedFlow = await userAmount.create(
-      [{ credit, debit, interest, totalAmount, userId }],
-      { session }
+    const updatedFlow = await userAmount.findOneAndUpdate(
+      { userId: userId },
+      { credit, debit, interest, totalAmount },
+      { new: true, upsert: true, session, sort: { createdAt: -1 } }
     );
 
     await session.commitTransaction();
