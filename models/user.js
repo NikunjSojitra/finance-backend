@@ -40,6 +40,10 @@ const userSchema = new mongoose.Schema({
     ref: "User",
     default: null 
   },
+  images: {
+    type: [String],
+    default: []
+  },
 }, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } }
 );
 

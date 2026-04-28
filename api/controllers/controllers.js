@@ -126,7 +126,7 @@ exports.allEmployeeData = async (req, res) => {
 };
 
 exports.updateEmpData = async (req, res) => {
-  const { fname, lname, email, mobile, credit, debit, interest, totalAmount } = req.body;
+  const { fname, lname, email, mobile, credit, debit, interest, totalAmount, images } = req.body;
   const userId = req.params._id;
 
   const session = await mongoose.startSession();
@@ -134,7 +134,7 @@ exports.updateEmpData = async (req, res) => {
   try {
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { fname, lname, email, mobile },
+      { fname, lname, email, mobile, images },
       { new: true, runValidators: true, session }
     );
 
